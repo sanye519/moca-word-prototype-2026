@@ -2535,7 +2535,7 @@ lucide.createIcons({icons});\``);if(typeof c>"u")throw new Error("`createIcons()
   };
   function mochaBook(stage='初中'){return {category:'摩卡3500词',stage,grade:stage,publisher:'魔卡词汇',volume:'全册',id:'mocha-3500-'+({'小学':'primary','初中':'junior','高中':'senior'}[stage]||'primary')};}
   const state = {page:'home',book:mochaBook(),paid:false,loggedOut:false,unit:0,group:0,index:0,mode:0,spellingDifficulty:'hard',mask:'none',revealed:new Set(),accent:'en-GB',expired:false,editing:false,selection:null,assembled:[],assemblyError:false,quizWrong:new Set(),groupWrongs:{},pendingWrongs:{},reviewQueue:[],reviewing:false,recording:false,score:null,overlay:null,category:'初中',grade:'七年级',publisher:'沪教版',learned:{},favorites:[],wrongWords:[],answered:{},firstWrong:{},onlineMinutes:0,onlineByDay:{},trialStartedAt:null,wrongToday:{},wrongLog:{},reviewHistory:{},reviewedToday:[],pumpkinSeeds:0,displayName:'单词学习者',phone:'138****2026',userId:'',keyboardOpen:false,spellingSuccess:false,useWrong:new Set(),courseProgress:{},courseRate:1,coursePlaying:false,lastStudyPosition:null,wordMarks:{},registeredAt:null,parentSessionToken:'',membershipPackages:[],vipUntil:null};
-  const parentApiBase = new URLSearchParams(location.search).get('parentApi') || 'https://014f31dda0c19e.lhr.life';
+  const parentApiBase = new URLSearchParams(location.search).get('parentApi') || 'https://d72961c8ab3986.lhr.life';
   let hadSavedProgress=false;
   try {
     const saved = newUserDemo ? null : JSON.parse(localStorage.getItem(storageKey + '.progress') || 'null');
