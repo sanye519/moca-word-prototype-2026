@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#58cc02">
+  <title>魔卡伴侣 · 用户管理后台</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <main id="login-view" class="login-view" hidden>
+    <section class="login-card" aria-labelledby="login-title">
+      <div class="login-brand"><span class="brand-mark">M</span><strong>魔卡伴侣</strong></div>
+      <h1 id="login-title">工作人员登录</h1>
+      <p class="login-subtitle">用户与套餐管理后台</p>
+      <form id="login-form" method="post" action="/api/admin/login">
+        <div class="field">
+          <label for="username">账号</label>
+          <input id="username" name="username" type="text" autocomplete="username" autocorrect="off" autocapitalize="off" spellcheck="false" value="admin" required>
+        </div>
+        <div class="field">
+          <label for="password">密码</label>
+          <div class="password-field">
+            <input id="password" name="password" type="password" autocomplete="current-password" required>
+            <button id="toggle-password" type="button" aria-pressed="false">显示</button>
+          </div>
+        </div>
+        <p id="login-error" class="form-error" role="alert" hidden></p>
+        <button class="button primary full" type="submit">登录后台</button>
+      </form>
+    </section>
+  </main>
+
+  <div id="admin-view" class="admin-layout" hidden>
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand"><span class="brand-mark">M</span><strong>魔卡伴侣</strong></div>
+      <nav class="sidebar-nav" aria-label="后台导航">
+        <button class="nav-item active" data-view="users" type="button">用户信息</button>
+        <button class="nav-item" data-view="recharges" type="button">充值记录</button>
+        <button class="nav-item" data-view="stats" type="button">用户统计</button>
+      </nav>
+      <div class="sidebar-account"><span>工作人员 · <b id="admin-name">admin</b></span><button id="logout-button" type="button">退出登录</button></div>
+    </aside>
+    <button class="sidebar-scrim" id="sidebar-scrim" type="button" aria-label="关闭导航" hidden></button>
+
+    <main class="main-content">
+      <header class="topbar">
+        <button id="menu-button" class="icon-button" type="button" aria-label="打开导航" aria-expanded="false">☰</button>
+        <div><h1 id="page-title">用户信息</h1><p id="page-subtitle">管理家长账号与套餐权益</p></div>
+      </header>
+      <div class="content-wrap">
+        <section id="view-users" class="view-section">
+          <div class="toolbar">
+            <form id="search-form" class="search-form" method="get" action="/api/admin/users">
+              <label class="sr-only" for="query">搜索用户</label>
+              <input id="query" name="query" type="search" placeholder="请输入搜索关键字" autocomplete="off" spellcheck="false" enterkeyhint="search">
+              <button class="button secondary" type="submit">查询</button>
+              <button class="button ghost" id="reset-search" type="button">重置</button>
+            </form>
+            <div class="toolbar-actions">
+              <button class="button secondary" id="export-button" type="button">导出</button>
+              <button class="button ghost" id="refresh-users" type="button">刷新</button>
+            </div>
+          </div>
+          <div class="table-card">
+            <div class="table-scroll">
+              <table>
+                <thead><tr><th>用户ID</th><th>登录名</th><th>注册时间</th><th>用户名</th><th>手机号</th><th>VIP到期时间</th><th>VIP内容</th><th>操作</th></tr></thead>
+                <tbody id="users-body"></tbody>
+              </table>
+            </div>
+            <p class="table-summary" id="users-total" aria-live="polite"></p>
+          </div>
+        </section>
+
+        <section id="view-recharges" class="view-section" hidden>
+          <div class="section-actions"><button class="button ghost" id="refresh-logs" type="button">刷新</button></div>
+          <div class="table-card">
+            <div class="table-scroll">
+              <table>
+                <thead><tr><th>时间</th><th>用户ID</th><th>登录名</th><th>操作</th><th>调整前</th><th>调整后</th><th>操作人</th></tr></thead>
+                <tbody id="logs-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="view-stats" class="view-section" hidden>
+          <div class="stats-grid" id="stats-cards"></div>
+          <div class="stats-layout">
+            <section class="stats-panel" aria-labelledby="trend-title">
+              <div class="panel-heading"><h2 id="trend-title">近 7 天注册趋势</h2></div>
+              <div class="trend-chart" id="trend-chart"></div>
+            </section>
+            <section class="stats-panel" aria-labelledby="package-title">
+              <div class="panel-heading"><h2 id="package-title">有效套餐用户</h2></div>
+              <div class="package-stats" id="package-stats"></div>
+            </section>
+          </div>
+          <section class="stats-panel recent-panel" aria-labelledby="recent-title">
+            <div class="panel-heading"><h2 id="recent-title">最近操作</h2><button class="button ghost" id="refresh-stats" type="button">刷新</button></div>
+            <div class="recent-list" id="recent-list"></div>
+          </section>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <dialog id="extend-dialog" class="extend-dialog" aria-labelledby="extend-title">
+    <form id="extend-form" method="post" action="#">
+      <h2 id="extend-title">延长 VIP</h2>
+      <p id="extend-user" class="dialog-user"></p>
+      <fieldset>
+        <legend>选择延长时间</legend>
+        <label class="radio-row"><input type="radio" name="days" value="30" checked> 30 天</label>
+        <label class="radio-row"><input type="radio" name="days" value="90"> 90 天</label>
+        <label class="radio-row"><input type="radio" name="days" value="365"> 365 天</label>
+        <label class="radio-row"><input type="radio" name="days" value="custom"> 自定义</label>
+        <label class="custom-days" for="custom-days">自定义天数<input id="custom-days" name="customDays" type="number" min="1" max="3650" step="1" value="30" inputmode="numeric"></label>
+      </fieldset>
+      <p class="dialog-note">将按该用户当前勾选的套餐延长有效期。</p>
+      <p id="extend-error" class="form-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button class="button ghost" id="close-dialog" type="button">取消</button><button class="button primary" type="submit">确认延长</button></div>
+    </form>
+  </dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
