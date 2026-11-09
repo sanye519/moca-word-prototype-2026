@@ -2534,13 +2534,14 @@ lucide.createIcons({icons});\``);if(typeof c>"u")throw new Error("`createIcons()
     beautiful:['adj. 时尚的','adj. 整洁的','adj. 珍贵的'], think:['v. 猜测；推测','v. 记得；记住','v. 决定；决心']
   };
   function mochaBook(stage='初中'){return {category:'摩卡3500词',stage,grade:stage,publisher:'魔卡词汇',volume:'全册',id:'mocha-3500-'+({'小学':'primary','初中':'junior','高中':'senior'}[stage]||'primary')};}
-  const state = {page:'home',book:mochaBook(),paid:false,loggedOut:false,unit:0,group:0,index:0,mode:0,spellingDifficulty:'hard',mask:'none',revealed:new Set(),accent:'en-GB',expired:false,editing:false,selection:null,assembled:[],assemblyError:false,quizWrong:new Set(),groupWrongs:{},pendingWrongs:{},reviewQueue:[],reviewing:false,recording:false,score:null,overlay:null,category:'初中',grade:'七年级',publisher:'沪教版',learned:{},favorites:[],wrongWords:[],answered:{},firstWrong:{},onlineMinutes:0,onlineByDay:{},trialStartedAt:null,wrongToday:{},wrongLog:{},reviewHistory:{},reviewedToday:[],pumpkinSeeds:0,displayName:'单词学习者',phone:'138****2026',userId:'',keyboardOpen:false,spellingSuccess:false,useWrong:new Set(),courseProgress:{},courseRate:1,coursePlaying:false,lastStudyPosition:null,wordMarks:{}};
+  const state = {page:'home',book:mochaBook(),paid:false,loggedOut:false,unit:0,group:0,index:0,mode:0,spellingDifficulty:'hard',mask:'none',revealed:new Set(),accent:'en-GB',expired:false,editing:false,selection:null,assembled:[],assemblyError:false,quizWrong:new Set(),groupWrongs:{},pendingWrongs:{},reviewQueue:[],reviewing:false,recording:false,score:null,overlay:null,category:'初中',grade:'七年级',publisher:'沪教版',learned:{},favorites:[],wrongWords:[],answered:{},firstWrong:{},onlineMinutes:0,onlineByDay:{},trialStartedAt:null,wrongToday:{},wrongLog:{},reviewHistory:{},reviewedToday:[],pumpkinSeeds:0,displayName:'单词学习者',phone:'138****2026',userId:'',keyboardOpen:false,spellingSuccess:false,useWrong:new Set(),courseProgress:{},courseRate:1,coursePlaying:false,lastStudyPosition:null,wordMarks:{},registeredAt:null,parentSessionToken:'',membershipPackages:[],vipUntil:null};
+  const parentApiBase = new URLSearchParams(location.search).get('parentApi') || 'https://8e775cab1e055e.lhr.life';
   let hadSavedProgress=false;
   try {
     const saved = newUserDemo ? null : JSON.parse(localStorage.getItem(storageKey + '.progress') || 'null');
     if (saved && typeof saved === 'object') {
       hadSavedProgress=true;
-      for (const key of ['book','unit','group','index','mode','spellingDifficulty','accent','learned','favorites','wrongWords','collectionOrigins','answered','firstWrong','groupWrongs','pendingWrongs','loggedOut','trialStartedAt','wrongToday','wrongLog','reviewHistory','reviewedToday','pumpkinSeeds','onlineByDay','displayName','phone','userId','courseProgress','lastStudyPosition','wordMarks']) if (saved[key] !== undefined) state[key] = saved[key];
+      for (const key of ['book','unit','group','index','mode','spellingDifficulty','accent','learned','favorites','wrongWords','collectionOrigins','answered','firstWrong','groupWrongs','pendingWrongs','loggedOut','trialStartedAt','wrongToday','wrongLog','reviewHistory','reviewedToday','pumpkinSeeds','onlineByDay','displayName','phone','userId','courseProgress','lastStudyPosition','wordMarks','paid','parentSessionToken','registeredAt','membershipPackages','vipUntil','lastLoginPhone']) if (saved[key] !== undefined) state[key] = saved[key];
       state.reviewQueue = Array.isArray(saved.reviewQueue) ? saved.reviewQueue : [];
       state.reviewing = !!saved.reviewing;
       if (!['en-GB','en-US'].includes(state.accent)) state.accent='en-GB';
@@ -2666,9 +2667,37 @@ lucide.createIcons({icons});\``);if(typeof c>"u")throw new Error("`createIcons()
 
     return `<button class="${esc(cls)}" data-edit-button="${esc(id)}" type="button" data-action="${esc(action)}" ${extra}>${symbol?icon(symbol):''}${editable('button.'+id,label)}</button>`;
   }
+  function membershipLabel(){
+    if(!state.vipUntil)return '未开通VIP';
+    const packages=(state.membershipPackages||[]).map(id=>({primary:'小学',junior:'初中',senior:'高中'}[id])).filter(Boolean).join(' / ');
+    return `${packages||'VIP'} · ${new Date(state.vipUntil).toLocaleDateString('zh-CN',{timeZone:'Asia/Shanghai'})}到期`;
+  }
+  function applyParentUser(user){
+    state.userId=String(user.id);state.registeredAt=user.registeredAt;state.membershipPackages=user.packages||[];state.vipUntil=user.vipUntil;
+    state.paid=!!(user.packages?.length&&user.vipUntil&&new Date(user.vipUntil).getTime()>Date.now());
+  }
+  async function syncParentAccount(){
+    const phone=/^1\d{10}$/.test(state.lastLoginPhone||'')?state.lastLoginPhone:'13800138000';
+    try{
+      const response=await fetch(parentApiBase+'/api/parent/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({phone,displayName:state.displayName})});
+      const data=await response.json();if(!response.ok)throw new Error(data.error||'同步失败');
+      state.parentSessionToken=data.token;state.lastLoginPhone=phone;applyParentUser(data.user);saveProgress();
+      if(state.page==='profile')renderApp();
+      toast('账号信息已同步到后台');
+    }catch{toast('后台同步暂不可用，学习记录已保存在本机');}
+  }
+  async function refreshParentMembership(){
+    if(!state.parentSessionToken)return;
+    try{
+      const response=await fetch(parentApiBase+'/api/parent/me',{headers:{Authorization:'Bearer '+state.parentSessionToken}});
+      if(!response.ok)return;
+      const data=await response.json();applyParentUser(data.user);saveProgress();
+      if(state.page==='profile')renderApp();
+    }catch{}
+  }
   function saveProgress() {
     if(state.page==='study'&&!state.overlay&&!state.markedTraining)state.lastStudyPosition={unit:state.unit,group:state.group,index:state.index,mode:state.mode};
-    try { const value={defaultsVersion:2}; for(const key of ['book','unit','group','index','mode','spellingDifficulty','accent','learned','favorites','wrongWords','collectionOrigins','answered','firstWrong','groupWrongs','pendingWrongs','reviewQueue','reviewing','loggedOut','trialStartedAt','wrongToday','wrongLog','reviewHistory','reviewedToday','pumpkinSeeds','onlineByDay','displayName','phone','userId','courseProgress','lastStudyPosition','wordMarks'])value[key]=state[key];if(state.markedTraining)Object.assign(value,state.markedTraining.returnPosition);localStorage.setItem(storageKey+'.progress',JSON.stringify(value)); } catch { /* Progress is optional in the sample. */ }
+    try { const value={defaultsVersion:2}; for(const key of ['book','unit','group','index','mode','spellingDifficulty','accent','learned','favorites','wrongWords','collectionOrigins','answered','firstWrong','groupWrongs','pendingWrongs','reviewQueue','reviewing','loggedOut','trialStartedAt','wrongToday','wrongLog','reviewHistory','reviewedToday','pumpkinSeeds','onlineByDay','displayName','phone','userId','courseProgress','lastStudyPosition','wordMarks','paid','parentSessionToken','registeredAt','membershipPackages','vipUntil','lastLoginPhone'])value[key]=state[key];if(state.markedTraining)Object.assign(value,state.markedTraining.returnPosition);localStorage.setItem(storageKey+'.progress',JSON.stringify(value)); } catch { /* Progress is optional in the sample. */ }
   }
   function saveConfig() {
     config.meta.updatedAt=Date.now();
@@ -2824,7 +2853,7 @@ lucide.createIcons({icons});\``);if(typeof c>"u")throw new Error("`createIcons()
     const avatar=`<svg class="moca-avatar-illustration" viewBox="0 0 80 80" role="img" aria-label="戴眼镜的谷嘟嘟"><circle cx="40" cy="40" r="38" fill="#fff4bd"/><path d="M21 43c2-12 10-18 19-18s17 6 19 18l-3 23c-4 6-27 6-31 0z" fill="#fff1d8"/><path d="M24 45h32l-2 22c-4 5-24 5-28 0z" fill="#34804b"/><path d="M27 43v12m26-12v12" stroke="#27673b" stroke-width="4" stroke-linecap="round"/><path d="M9 32c13-10 48-10 62 0-13 10-48 10-62 0Z" fill="#e6ca70" stroke="#b99b4b" stroke-width="1.4"/><path d="M25 28c3-15 9-22 15-22s12 7 15 22c-8 5-22 5-30 0Z" fill="#ecd685" stroke="#b99b4b" stroke-width="1.4"/><path d="M40 10c-1-6 2-9 7-9-1 5-3 8-7 9Zm-1 1c-4-3-8-2-10 1 4 2 7 2 10-1Z" fill="#69a945"/><circle cx="31" cy="42" r="6.2" fill="none" stroke="#44513e" stroke-width="2"/><circle cx="49" cy="42" r="6.2" fill="none" stroke="#44513e" stroke-width="2"/><path d="M37 42h6m-18-1-5-2m36 2 5-2" stroke="#44513e" stroke-width="2" stroke-linecap="round"/><circle cx="31" cy="42" r="2.1" fill="#1f291d"/><circle cx="49" cy="42" r="2.1" fill="#1f291d"/><path d="M37 49q3 3 6 0" fill="none" stroke="#6e513c" stroke-width="1.4" stroke-linecap="round"/><circle cx="25" cy="49" r="3.2" fill="#f2a6a0" opacity=".7"/><circle cx="55" cy="49" r="3.2" fill="#f2a6a0" opacity=".7"/></svg>`;
     const menu=items=>`<div class="profile-menu">${items.map(([action,label,sub,symbol])=>`<button class="profile-row" data-action="${action}" data-edit-button="profile-${action}"><span class="profile-row-icon">${icon(symbol)}</span><span class="profile-row-copy">${editable('button.profile-'+action,label,'strong')}${editable('profile.sub.'+action,sub,'small')}</span>${icon('chevron-right')}</button>`).join('')}</div>`;
     return `${topbar()}<div class="app-scroll"><div class="profile-content">
-      <button class="profile-identity profile-identity-button" data-action="personal-info"><span class="moca-avatar">${avatar}</span><span class="profile-identity-copy"><strong>${esc(state.displayName)}</strong><small>ID：${esc(state.userId)}</small><span class="profile-contact-line"><span>${esc(state.phone)}</span><span class="profile-status">演示账号 · 不限时</span></span></span>${icon('chevron-right')}</button>
+      <button class="profile-identity profile-identity-button" data-action="personal-info"><span class="moca-avatar">${avatar}</span><span class="profile-identity-copy"><strong>${esc(state.displayName)}</strong><small>ID：${esc(state.userId)}</small><span class="profile-contact-line"><span>${esc(state.phone)}</span><span class="profile-status">${membershipLabel()}</span></span></span>${icon('chevron-right')}</button>
       <div class="profile-stats"><div><b>${learnedCount}</b>${editable('profile.learned','已学词数','span')}</div><div><b>${practiceDay(state.onlineMinutes)}</b>${editable('profile.days','练习天数','span')}</div><div><b>${state.onlineMinutes}</b>${editable('profile.minutes','今日在线 / 分钟','span')}</div></div>
       <h2 class="profile-section-title">学情与订单</h2>${menu([['report','学情报告','查看本周学习情况','chart-no-axes-column-increasing'],['rank','排行榜','学习词数与练习天数','trophy'],['orders','我的订单','查看订单记录','receipt-text']])}
       <h2 class="profile-section-title">服务与设置</h2>${menu([['contact','联系客服','课程咨询与权益开通','headset'],['settings','设置','发音、缓存与协议','settings']])}
@@ -3638,7 +3667,7 @@ lucide.createIcons({icons});\``);if(typeof c>"u")throw new Error("`createIcons()
       case 'login-preview':navigate('login');break;
       case 'login-agreement':openSheet('custom-popup',{title:'用户协议',body:'用户协议正文待提供。'});break;
       case 'login-privacy':openSheet('custom-popup',{title:'隐私政策',body:'隐私政策正文待提供。'});break;
-      case 'login':if(!$('#login-consent')?.checked){const checkbox=$('#login-consent');checkbox?.closest('[data-consent-row]')?.classList.add('needs-consent');checkbox?.scrollIntoView({block:'nearest'});checkbox?.focus({preventScroll:true});toast('请先阅读并勾选协议，再继续登录');break;}if(loginForm.provider&&!/^1\d{10}$/.test(loginForm.phone.trim())){toast('请输入正确的11位手机号');break;}if(loginForm.provider==='phone'){const phone=loginForm.phone.trim();if(loginForm.sentTo!==phone||loginForm.code!=='123456'){toast('请获取并输入正确的验证码');break;}state.phone=phone.slice(0,3)+'****'+phone.slice(-4);}clearTimeout(toastTimer);$('#toast').hidden=true;state.loggedOut=false;if(!state.trialStartedAt)state.trialStartedAt=Date.now();Object.assign(loginForm,{provider:null,phone:'',code:'',sentTo:null,consent:false});navigate('home');break;
+      case 'login':if(!$('#login-consent')?.checked){const checkbox=$('#login-consent');checkbox?.closest('[data-consent-row]')?.classList.add('needs-consent');checkbox?.scrollIntoView({block:'nearest'});checkbox?.focus({preventScroll:true});toast('请先阅读并勾选协议，再继续登录');break;}if(loginForm.provider&&!/^1\d{10}$/.test(loginForm.phone.trim())){toast('请输入正确的11位手机号');break;}if(loginForm.provider==='phone'){const phone=loginForm.phone.trim();if(loginForm.sentTo!==phone||loginForm.code!=='123456'){toast('请获取并输入正确的验证码');break;}state.phone=phone.slice(0,3)+'****'+phone.slice(-4);}clearTimeout(toastTimer);$('#toast').hidden=true;state.loggedOut=false;if(!state.trialStartedAt)state.trialStartedAt=Date.now();state.lastLoginPhone=loginForm.provider==='phone'?loginForm.phone.trim():state.lastLoginPhone;Object.assign(loginForm,{provider:null,phone:'',code:'',sentTo:null,consent:false});navigate('home');syncParentAccount();break;
       case 'back-sheet':{
         clearTimeout(transitionTimer);clearInterval(courseTimer);state.coursePlaying=false;stopInlinePlayer();if(activity)activity.reading=false;if('speechSynthesis'in window)speechSynthesis.cancel();
         const kind=state.overlay?.kind;
@@ -3857,6 +3886,7 @@ lucide.createIcons({icons});\``);if(typeof c>"u")throw new Error("`createIcons()
   if(feedbackDemo?.startsWith('wrong-')){state.loggedOut=false;state.trialStartedAt=Date.now();state.book=mochaBook();state.page='study';state.unit=0;state.group=0;state.index=1;state.mode=2;state.paid=feedbackDemo==='wrong-video';state.overlay={kind:'study-wrong',word:currentWord().id};}
   else if(feedbackDemo){state.loggedOut=false;state.trialStartedAt=Date.now();state.book=mochaBook();state.page='study';state.unit=0;state.group=0;state.index=0;state.mode=feedbackDemo==='translation'?2:feedbackDemo==='writing'?4:5;resetQuestion();if(state.mode===4){state.spellingDifficulty='hard';state.assembled=[...currentWord().id].map((letter,i)=>({position:i,text:letter,source:i}));state.spellingSuccess=true;}else if(state.mode===5)state.useSuccess=true;else state.translationSuccess=true;state.overlay={kind:'study-feedback',spelling:state.mode===4};}
   render();
+  refreshParentMembership();
   if(typeof requestAnimationFrame==='function')requestAnimationFrame(fitPreview);
 })();
 </script>

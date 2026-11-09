@@ -4,7 +4,7 @@ services:
     runtime: node
     plan: free
     buildCommand: ""
-    startCommand: node server.js
+    startCommand: node moca-admin/server.js
     envVars:
       - key: ADMIN_USERNAME
         value: admin
